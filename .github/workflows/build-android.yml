@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android Release APK/AAB
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-release:
     runs-on: ubuntu-latest
 
     env:
@@ -90,8 +90,41 @@ jobs:
             "cmake;${ANDROID_CMAKE_VERSION}"
 
       - name: Configure Flutter Android SDK
+        run: flutter config --android-sdk "$ANDROID_SDK_ROOT"
+
+      - name: Configure release keystore
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          flutter config --android-sdk "$ANDROID_SDK_ROOT"
+          set -e
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/upload-keystore.jks"
+
+          cat > "$GITHUB_WORKSPACE/android/key.properties" <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=$GITHUB_WORKSPACE/upload-keystore.jks
+          EOF
+
+          echo "Release keystore configured."
+
+      - name: Validate signing config
+        shell: bash
+        run: |
+          set -e
+          if [ ! -f "$GITHUB_WORKSPACE/android/key.properties" ]; then
+            echo "Keystore belum dikonfigurasi."
+            echo "Tambahkan secret: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD, KEY_ALIAS"
+            exit 1
+          fi
+
+          echo "Signing config found:"
+          sed -n '1,10p' "$GITHUB_WORKSPACE/android/key.properties"
 
       - name: Show Flutter doctor
         run: flutter doctor -v
@@ -99,12 +132,22 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Build Android APK
-        run: flutter build apk --debug --target-platform android-arm64
+      - name: Build release APK
+        run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Build release App Bundle
+        run: flutter build appbundle --release
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wastick-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: wastick-release-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wastick-release-aab
+          path: build/app/outputs/bundle/release/*.aab
           if-no-files-found: error
