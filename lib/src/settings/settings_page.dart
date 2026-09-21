@@ -231,7 +231,7 @@ class SettingsPage extends StatelessWidget {
           ),
           ListTile(
             onTap: () {
-              String url = "https://github.com/lolocomotive/stickers";
+              String url = "https://github.com/asecxxth/Wastick";
               launchUrl(Uri.parse(url));
             },
             leading: Icon(Icons.code),
