@@ -34,7 +34,7 @@ def hasReleaseKeystore =
 
 android {
     namespace "de.loicezt.stickers"
-    compileSdk 36
+    compileSdkVersion 34
     ndkVersion "29.0.14206865"
 
     compileOptions {
