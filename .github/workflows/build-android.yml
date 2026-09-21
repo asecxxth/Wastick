@@ -10,6 +10,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      FLUTTER_VERSION: "3.32.8"
+      JAVA_VERSION: "17"
+      ANDROID_COMPILE_SDK: "34"
+      ANDROID_BUILD_TOOLS: "34.0.0"
+      ANDROID_NDK_VERSION: "29.0.14206865"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,22 +25,31 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.32.8"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
-      - name: Install Android SDK and NDK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure Flutter Android SDK
+        run: flutter config --android-sdk "$ANDROID_SDK_ROOT"
+
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses
+
+      - name: Install Android SDK packages
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-36" \
-            "build-tools;36.0.0" \
-            "ndk;29.0.14206865"
+          sdkmanager --install "platform-tools" \
+            "platforms;android-${ANDROID_COMPILE_SDK}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "ndk;${ANDROID_NDK_VERSION}" \
+            "cmake;3.22.1"
 
       - name: Install Flutter dependencies
         run: flutter pub get
