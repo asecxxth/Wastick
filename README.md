@@ -1,10 +1,3 @@
-# Stickers
-
-Simple android sticker maker for WhatsApp without ads.
-
-[![](https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg)](https://play.google.com/store/apps/details?id=de.loicezt.stickers)
-
-Or download from the latest [GitHub Release](https://github.com/lolocomotive/stickers/releases)
 
 ## Features
 
