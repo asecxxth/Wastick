@@ -106,8 +106,6 @@ class _VideoCropPageState extends State<VideoCropPage> with TickerProviderStateM
           children: [
             Expanded(
               child: Container(
-                // The clip and empty BoxDecoration is intentional, sometimes the done button doesn't appear otherwise
-                // See: https://github.com/lolocomotive/stickers/issues/1
                 clipBehavior: Clip.antiAlias,
                 decoration: const BoxDecoration(),
                 child: Stack(
@@ -159,7 +157,6 @@ class _VideoCropPageState extends State<VideoCropPage> with TickerProviderStateM
                 Stack(
                   children: [
                     RangeSlider(
-                        year2023: false,
                         values: _range,
                         onChangeEnd: (_) async {
                           if (_seekTarget == _controller.value.duration * _range.end) {
@@ -201,7 +198,6 @@ class _VideoCropPageState extends State<VideoCropPage> with TickerProviderStateM
                           value: _controller.value.position.inMilliseconds /
                               _controller.value.duration.inMilliseconds,
                           onChanged: (_) {},
-                          year2023: false,
                         ),
                       ),
                   ],
