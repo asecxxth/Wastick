@@ -11,6 +11,7 @@ import 'package:stickers/src/fonts_api/fonts_models.dart';
 import 'package:stickers/src/fonts_api/fonts_registry.dart';
 
 String apiURL = "https://www.googleapis.com/webfonts/v1/webfonts";
+
 /*
  * https://developers.google.com/fonts/docs/developer_api/?apix=true
  * webfonts?key=<your_key>[&family=<family>][&subset=<subset>][&capability=<capability>...][&sort=<sort>]
@@ -22,6 +23,10 @@ String apiURL = "https://www.googleapis.com/webfonts/v1/webfonts";
  *    sort: alpha | date | popularity | style | trending.
  */
 Future<GoogleFontsReply> getFonts({String? family, String? category}) async {
+  if (fontsKey.isEmpty) {
+    throw Exception("Google Fonts API key is not configured. Font feature is disabled.");
+  }
+
   File fontsListCache = File("$fontsCacheDir/google_fonts.json");
   if (await fontsListCache.exists()) {
     try {
@@ -32,11 +37,13 @@ Future<GoogleFontsReply> getFonts({String? family, String? category}) async {
       debugPrintStack(stackTrace: st);
     }
   }
+
   Uri uri = Uri.parse(apiURL).replace(queryParameters: {
     "key": fontsKey,
     if (family != null) "family": family,
     if (category != null) "category": category,
   });
+
   final response = await get(uri);
   await fontsListCache.create(recursive: true);
   await fontsListCache.writeAsString(response.body);
