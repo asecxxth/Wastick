@@ -16,6 +16,7 @@ jobs:
       ANDROID_COMPILE_SDK: "34"
       ANDROID_BUILD_TOOLS: "34.0.0"
       ANDROID_NDK_VERSION: "29.0.14206865"
+      ANDROID_CMAKE_VERSION: "3.22.1"
 
     steps:
       - name: Checkout repository
@@ -34,27 +35,37 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Check Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          flutter --version
+          java -version
 
-      - name: Configure Flutter Android SDK
-        run: flutter config --android-sdk "$ANDROID_SDK_ROOT"
-
-      - name: Accept Android licenses
-        run: yes | flutter doctor --android-licenses
+      - name: Accept Android SDK licenses
+        run: |
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
 
       - name: Install Android SDK packages
         run: |
-          sdkmanager --install "platform-tools" \
+          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --install \
+            "platform-tools" \
             "platforms;android-${ANDROID_COMPILE_SDK}" \
             "build-tools;${ANDROID_BUILD_TOOLS}" \
             "ndk;${ANDROID_NDK_VERSION}" \
-            "cmake;3.22.1"
+            "cmake;${ANDROID_CMAKE_VERSION}"
+
+      - name: Configure Flutter Android SDK
+        run: |
+          flutter config --android-sdk "$ANDROID_SDK_ROOT"
+
+      - name: Show Flutter doctor
+        run: flutter doctor -v
 
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build Android APK
         run: flutter build apk --debug --target-platform android-arm64
 
       - name: Upload APK
