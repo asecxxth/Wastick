@@ -41,9 +41,10 @@ class SettingsService {
 
   /// Gets the locale from the system settings if unset in config
   String _getLocale() {
-    if (Platform.localeName.startsWith("de")) return "de";
-    if (Platform.localeName.startsWith("fr")) return "fr";
-    return "en";
+  if (Platform.localeName.startsWith("de")) return "de";
+  if (Platform.localeName.startsWith("fr")) return "fr";
+  if (Platform.localeName.startsWith("id")) return "id";
+  return "en";
   }
 
   /// Persists the user's preferred ThemeMode to local or remote storage.
