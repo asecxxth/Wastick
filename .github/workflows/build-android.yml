@@ -1,11 +1,9 @@
-name: Build Android Release APK/AAB
+name: Build Android GitHub Release
 
 on:
   workflow_dispatch:
 
   push:
-    branches:
-      - main
     tags:
       - "v*"
 
@@ -13,16 +11,9 @@ permissions:
   contents: write
 
 jobs:
-  build-release:
+  build:
+    name: Build Android APK
     runs-on: ubuntu-latest
-
-    env:
-      FLUTTER_VERSION: "3.32.8"
-      JAVA_VERSION: "17"
-      ANDROID_COMPILE_SDK: "35"
-      ANDROID_BUILD_TOOLS: "35.0.0"
-      ANDROID_NDK_VERSION: "29.0.14206865"
-      ANDROID_CMAKE_VERSION: "3.22.1"
 
     steps:
       - name: Checkout repository
@@ -32,201 +23,42 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: "3.32.8"
           channel: stable
           cache: true
 
-      - name: Locate Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "${ANDROID_SDK_ROOT:-}" ]; then
-            export ANDROID_SDK_ROOT="${ANDROID_HOME:-}"
-          fi
-
-          if [ -z "${ANDROID_SDK_ROOT:-}" ]; then
-            echo "ANDROID_SDK_ROOT dan ANDROID_HOME tidak tersedia."
-            exit 1
-          fi
-
-          SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" \
-            -type f \
-            -name sdkmanager \
-            2>/dev/null | sort -V | tail -n 1)"
-
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager tidak ditemukan."
-            find "$ANDROID_SDK_ROOT" -type f -name sdkmanager 2>/dev/null || true
-            exit 1
-          fi
-
-          SDKMANAGER_DIR="$(dirname "$SDKMANAGER")"
-
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
-          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
-          echo "$SDKMANAGER_DIR" >> "$GITHUB_PATH"
-          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
-
-          echo "Android SDK ditemukan."
-          echo "sdkmanager ditemukan."
-
-      - name: Accept Android SDK licenses
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          yes | "$SDKMANAGER" \
-            --sdk_root="$ANDROID_SDK_ROOT" \
-            --licenses || true
-
-      - name: Install Android SDK packages
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          "$SDKMANAGER" \
-            --sdk_root="$ANDROID_SDK_ROOT" \
-            --install \
-            "platform-tools" \
-            "platforms;android-${ANDROID_COMPILE_SDK}" \
-            "build-tools;${ANDROID_BUILD_TOOLS}" \
-            "ndk;${ANDROID_NDK_VERSION}" \
-            "cmake;${ANDROID_CMAKE_VERSION}"
-
-      - name: Configure Flutter Android SDK
-        shell: bash
-        run: |
-          flutter config --android-sdk "$ANDROID_SDK_ROOT"
-
-      - name: Configure release keystore
-        shell: bash
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${KEYSTORE_BASE64:-}" ]; then
-            echo "Secret KEYSTORE_BASE64 belum dibuat."
-            exit 1
-          fi
-
-          if [ -z "${KEYSTORE_PASSWORD:-}" ]; then
-            echo "Secret KEYSTORE_PASSWORD belum dibuat."
-            exit 1
-          fi
-
-          if [ -z "${KEY_PASSWORD:-}" ]; then
-            echo "Secret KEY_PASSWORD belum dibuat."
-            exit 1
-          fi
-
-          if [ -z "${KEY_ALIAS:-}" ]; then
-            echo "Secret KEY_ALIAS belum dibuat."
-            exit 1
-          fi
-
-          mkdir -p "$GITHUB_WORKSPACE/android"
-
-          echo "$KEYSTORE_BASE64" | base64 --decode \
-            > "$GITHUB_WORKSPACE/upload-keystore.jks"
-
-          if [ ! -s "$GITHUB_WORKSPACE/upload-keystore.jks" ]; then
-            echo "File upload-keystore.jks kosong atau gagal dibuat."
-            exit 1
-          fi
-
-          printf '%s\n' \
-            "storePassword=${KEYSTORE_PASSWORD}" \
-            "keyPassword=${KEY_PASSWORD}" \
-            "keyAlias=${KEY_ALIAS}" \
-            "storeFile=${GITHUB_WORKSPACE}/upload-keystore.jks" \
-            > "$GITHUB_WORKSPACE/android/key.properties"
-
-          echo "Release keystore berhasil dikonfigurasi."
-
-      - name: Validate release keystore
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ ! -f "$GITHUB_WORKSPACE/android/key.properties" ]; then
-            echo "android/key.properties tidak ditemukan."
-            exit 1
-          fi
-
-          if [ ! -f "$GITHUB_WORKSPACE/upload-keystore.jks" ]; then
-            echo "upload-keystore.jks tidak ditemukan."
-            exit 1
-          fi
-
-          echo "Release keystore ditemukan dan siap digunakan."
-
-      - name: Show Flutter doctor
-        shell: bash
-        run: |
-          flutter doctor -v
-
       - name: Install Flutter dependencies
-        shell: bash
-        run: |
-          flutter pub get
+        run: flutter pub get
 
       - name: Build release APK
-        shell: bash
-        run: |
-          flutter build apk --release
+        run: flutter build apk --release
 
-      - name: Build release App Bundle
-        shell: bash
+      - name: Rename APK
         run: |
-          flutter build appbundle --release
-
-      - name: Prepare release files
-        shell: bash
-        run: |
-          set -euo pipefail
-
           mkdir -p release-files
-
-          cp \
-            build/app/outputs/flutter-apk/app-release.apk \
-            release-files/wastick-release.apk
-
-          cp \
-            build/app/outputs/bundle/release/app-release.aab \
-            release-files/wastick-release.aab
-
-          echo "File release berhasil disiapkan:"
-          ls -lh release-files
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            release-files/wastick-${{ github.ref_name }}.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wastick-release-apk
-          path: release-files/wastick-release.apk
+          name: wastick-${{ github.ref_name }}-apk
+          path: release-files/*.apk
           if-no-files-found: error
 
-      - name: Upload AAB artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wastick-release-aab
-          path: release-files/wastick-release.aab
-          if-no-files-found: error
-
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release-files/wastick-release.apk
-            release-files/wastick-release.aab
+          tag_name: ${{ github.ref_name }}
+          name: Wastick ${{ github.ref_name }}
+          body: |
+            Wastick Android release ${{ github.ref_name }}
+
+            APK dapat di-download dari bagian Assets.
+          files: release-files/*.apk
           generate_release_notes: true
