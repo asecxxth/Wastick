@@ -8,14 +8,19 @@ class GoogleFontsReply {
   });
 
   factory GoogleFontsReply.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
     return GoogleFontsReply(
-      kind: json['kind'],
-      items: (json['items'] as List)
-          .map((item) => WebFont.fromJson(item))
-          .toList(),
+      kind: json['kind'] as String? ?? '',
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map<String, dynamic>>()
+              .map(WebFont.fromJson)
+              .toList()
+          : const [],
     );
   }
 }
+
 class WebFont {
   final String family;
   final List<String> variants;
@@ -40,16 +45,23 @@ class WebFont {
   });
 
   factory WebFont.fromJson(Map<String, dynamic> json) {
+    final rawFiles = json['files'];
     return WebFont(
-      family: json['family'],
-      variants: List<String>.from(json['variants']),
-      subsets: List<String>.from(json['subsets']),
-      version: json['version'],
-      lastModified: json['lastModified'],
-      files: Map<String, String>.from(json['files']),
-      category: json['category'],
-      kind: json['kind'],
-      menu: json['menu'],
+      family: json['family'] as String? ?? '',
+      variants: _stringList(json['variants']),
+      subsets: _stringList(json['subsets']),
+      version: json['version'] as String? ?? '',
+      lastModified: json['lastModified'] as String? ?? '',
+      files: rawFiles is Map
+          ? rawFiles.map((key, value) => MapEntry(key.toString(), value.toString()))
+          : const {},
+      category: json['category'] as String? ?? '',
+      kind: json['kind'] as String? ?? '',
+      menu: json['menu'] as String? ?? '',
     );
+  }
+
+  static List<String> _stringList(Object? value) {
+    return value is List ? value.whereType<String>().toList() : const [];
   }
 }
